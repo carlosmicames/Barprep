@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: pr-bar-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: your_secure_password_here
+      POSTGRES_DB: pr_bar_exam
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: pr-bar-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:your_secure_password_here@postgres:5432/pr_bar_exam
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_ORIGINS=http://localhost:3000,http://frontend:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/uploads:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pr-bar-frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    command: npm start
+
+volumes:
+  postgres_data:
+    driver: local
