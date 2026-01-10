@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/mcq', label: 'MCQ Practice', icon: BookOpen },
-  { href: '/essays', label: 'Essays', icon: FileText },
+  { href: '/essay', label: 'Essays', icon: FileText },
   { href: '/community', label: 'Community', icon: MessageSquare },
   { href: '/progress', label: 'Progress', icon: TrendingUp },
 ];

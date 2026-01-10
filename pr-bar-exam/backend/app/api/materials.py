@@ -9,9 +9,11 @@ from app.core.config import settings
 from app.schemas import schemas
 from app.models.models import StudyMaterial, User, SubjectEnum
 from app.services.pdf_service import pdf_service
+from app.services.blob_service import blob_service
 import os
 import shutil
 from pathlib import Path
+import tempfile
 
 router = APIRouter(prefix="/materials", tags=["study-materials"])
 
@@ -60,17 +62,44 @@ async def upload_study_material(
         )
     
     try:
-        # Save file
-        file_path = UPLOAD_DIR / f"{user_id}_{subject.value}_{file.filename}"
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
+        # Use Vercel Blob Storage if available, otherwise local storage
+        use_blob = blob_service is not None and os.getenv("VERCEL")
+
+        if use_blob:
+            # Upload to Vercel Blob Storage
+            blob_filename = f"{user_id}_{subject.value}_{file.filename}"
+            blob_result = await blob_service.upload_file(
+                file=file.file,
+                filename=blob_filename,
+                content_type=file.content_type or "application/pdf"
+            )
+            file_path_str = blob_result["url"]
+            download_url = blob_result.get("downloadUrl", blob_result["url"])
+
+            # For PDF processing, download to temp file
+            if file_ext == ".pdf":
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
+                temp_path = temp_file.name
+                file.file.seek(0)
+                with open(temp_path, "wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+                processing_path = temp_path
+            else:
+                processing_path = None
+        else:
+            # Save file locally
+            file_path = UPLOAD_DIR / f"{user_id}_{subject.value}_{file.filename}"
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            file_path_str = str(file_path)
+            processing_path = str(file_path)
+
         # Create database record
         material = StudyMaterial(
             user_id=user_id,
             subject=subject,
             title=title,
-            file_path=str(file_path),
+            file_path=file_path_str,
             file_type=file_ext.replace(".", ""),
             is_official=is_official,
             processed=False
@@ -78,22 +107,29 @@ async def upload_study_material(
         db.add(material)
         db.commit()
         db.refresh(material)
-        
+
         # Process PDF in background (in production, use Celery or similar)
-        if file_ext == ".pdf":
+        if file_ext == ".pdf" and processing_path:
             try:
                 chunks_created = pdf_service.process_pdf_and_create_embeddings(
                     db=db,
                     material_id=material.id,
-                    file_path=str(file_path)
+                    file_path=processing_path
                 )
                 print(f"Created {chunks_created} chunks for material {material.id}")
+
+                # Clean up temp file if using blob storage
+                if use_blob:
+                    os.unlink(processing_path)
             except Exception as e:
                 print(f"Error processing PDF: {str(e)}")
+                # Clean up temp file on error
+                if use_blob and processing_path and os.path.exists(processing_path):
+                    os.unlink(processing_path)
                 # Don't fail the upload, just mark as not processed
                 material.processed = False
                 db.commit()
-        
+
         db.refresh(material)
         return material
     
