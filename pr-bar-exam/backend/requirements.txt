@@ -19,6 +19,29 @@ tiktoken==0.5.2
 langchain==0.1.6
 langchain-openai==0.0.5
 pgvector==0.2.4
+httpx==0.25.2
+
+# PDF Processing
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+python-multipart==0.0.6
+
+# Utilities
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dateutil==2.8.2
+tenacity==8.2.3
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+
+# CORS
+python-cors==1.0.0
+
+# Vercel Serverless Support
+mangum==0.17.0
+vercel-blob==0.1.1
 
 # PDF Processing
 PyPDF2==3.0.1
