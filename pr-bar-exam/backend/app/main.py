@@ -1,22 +1,53 @@
 """
-Main FastAPI application for PR Bar Exam Prep Platform.
+Main FastAPI application for PR Bar Exam API.
+Hosted on Railway.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.core.config import settings
-from app.core.database import Base, engine
-from app.api import users, mcq, essays, materials, progress_chat
+from contextlib import asynccontextmanager
+import logging
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+from app.core.config import settings
+from app.api import public, quiz, progress, essays, admin
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO if not settings.DEBUG else logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan handler."""
+    logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    logger.info(f"Environment: {settings.ENVIRONMENT}")
+    yield
+    logger.info("Shutting down...")
+
 
 # Initialize FastAPI app
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    description="AI-powered Puerto Rico Bar Exam preparation platform",
+    description="""
+    AI-powered Puerto Rico Bar Exam preparation API.
+    
+    ## Features
+    - 📝 MCQ quizzes generated from Black Letter Law rules
+    - 📖 Essay grading with RAG-based feedback
+    - 📊 Progress tracking and weekly analytics
+    - 📚 PDF ingestion for study materials
+    
+    ## Authentication
+    - **Public endpoints**: No auth required (`/ping`, `/health`, `/subjects`)
+    - **User endpoints**: Supabase JWT token required (`/api/*`)
+    - **Admin endpoints**: API key + admin UUID required (`/admin/*`)
+    """,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    lifespan=lifespan
 )
 
 # Configure CORS
@@ -29,45 +60,26 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(users.router)
-app.include_router(mcq.router)
-app.include_router(essays.router)
-app.include_router(materials.router)
-app.include_router(progress_chat.progress_router)
-app.include_router(progress_chat.chat_router)
+# Public routes (no auth)
+app.include_router(public.router)
+
+# User routes (Supabase auth required)
+app.include_router(quiz.router, prefix="/api")
+app.include_router(progress.router, prefix="/api")
+app.include_router(essays.router, prefix="/api")
+
+# Admin routes (API key + admin UUID required)
+app.include_router(admin.router)
 
 
 @app.get("/")
 async def root():
-    """Root endpoint."""
+    """Root endpoint with API info."""
     return {
-        "message": "PR Bar Exam Prep API",
+        "name": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "docs": "/docs"
-    }
-
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "environment": settings.ENVIRONMENT
-    }
-
-
-@app.get("/subjects")
-async def get_subjects():
-    """Get list of all available subjects."""
-    from app.models.models import SubjectEnum
-    return {
-        "subjects": [
-            {
-                "code": subject.value,
-                "name": subject.value.replace("_", " ").title()
-            }
-            for subject in SubjectEnum
-        ]
+        "docs": "/docs",
+        "health": "/health"
     }
 
 
