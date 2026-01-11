@@ -194,3 +194,55 @@ class RAGResult(BaseModel):
     source: str
     page_number: Optional[int]
     similarity_score: float
+
+
+# Admin & BLL Rule Schemas (ADDED - These were missing!)
+class BLLRule(BaseModel):
+    """Business Logic Layer rule representation."""
+    id: Optional[int] = None
+    rule_number: str
+    title: str
+    content: str
+    subject: SubjectEnum
+    article_number: Optional[str] = None
+    section: Optional[str] = None
+    created_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class BLLRuleIngest(BaseModel):
+    """Response model for BLL rule ingestion."""
+    success: bool
+    rules_ingested: int
+    message: str
+    rules: Optional[List[BLLRule]] = None
+
+
+class UserInfo(BaseModel):
+    """User information for admin views."""
+    id: int
+    email: str
+    username: str
+    full_name: Optional[str] = None
+    is_admin: bool
+    created_at: datetime
+    total_questions_attempted: int = 0
+    total_essays_submitted: int = 0
+    
+    class Config:
+        from_attributes = True
+
+
+class AdminStats(BaseModel):
+    """Admin dashboard statistics."""
+    total_users: int
+    total_questions: int
+    total_essays: int
+    total_materials: int
+    total_bll_rules: int = 0
+    active_users_today: int = 0
+    active_users_week: int = 0
+    questions_by_subject: Dict[str, int] = {}
+    essays_by_subject: Dict[str, int] = {}

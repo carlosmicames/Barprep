@@ -1,93 +1,12 @@
 """
 Pydantic schemas package initialization.
-Re-exports all schemas and enums for convenient imports.
+Exports all schemas from schemas.py.
 """
 
-# Import and re-export everything from schemas.py
-from app.schemas.schemas import (
-    # Enums
-    SubjectEnum,
-    
-    # User schemas
-    UserBase,
-    UserCreate,
-    User,
-    
-    # Study Material schemas
-    StudyMaterialUpload,
-    StudyMaterial,
-    
-    # MCQ schemas
-    MCQOption,
-    MCQBase,
-    MCQCreate,
-    MCQuestion,
-    MCQWithoutAnswer,
-    MCQResponseCreate,
-    MCQResponseResult,
-    MCQGenerateRequest,
-    
-    # Essay schemas
-    EssaySubmit,
-    EssayGradeResponse,
-    Essay,
-    
-    # Progress schemas
-    SubjectProgress,
-    UserProgressOverview,
-    
-    # Chat schemas
-    ChatMessageCreate,
-    ChatMessage,
-    ChatRoom,
-    
-    # RAG schemas
-    RAGQuery,
-    RAGResult,
-)
+# Import everything from schemas.py using wildcard
+from app.schemas.schemas import *
 
-# Also import DifficultyEnum from models if needed
+# Also explicitly import DifficultyEnum from models
 from app.models.models import DifficultyEnum
 
-__all__ = [
-    # Enums
-    "SubjectEnum",
-    "DifficultyEnum",
-    
-    # User schemas
-    "UserBase",
-    "UserCreate",
-    "User",
-    
-    # Study Material schemas
-    "StudyMaterialUpload",
-    "StudyMaterial",
-    
-    # MCQ schemas
-    "MCQOption",
-    "MCQBase",
-    "MCQCreate",
-    "MCQuestion",
-    "MCQWithoutAnswer",
-    "MCQResponseCreate",
-    "MCQResponseResult",
-    "MCQGenerateRequest",
-    
-    # Essay schemas
-    "EssaySubmit",
-    "EssayGradeResponse",
-    "Essay",
-    
-    # Progress schemas
-    "SubjectProgress",
-    "UserProgressOverview",
-    
-    # Chat schemas
-    "ChatMessageCreate",
-    "ChatMessage",
-    "ChatRoom",
-    
-    # RAG schemas
-    "RAGQuery",
-    "RAGResult",
-]
+# Everything from schemas.py is now available when importing from app.schemas
