@@ -2,7 +2,7 @@
 Core configuration module for the PR Bar Exam backend.
 """
 from pydantic_settings import BaseSettings
-from typing import List
+from typing import List, Optional
 import os
 
 
@@ -12,18 +12,18 @@ class Settings(BaseSettings):
     # App Configuration
     APP_NAME: str = "PR Bar Exam Prep"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
-    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
+    ENVIRONMENT: str = "production"
     
     # OpenAI Configuration
     OPENAI_API_KEY: str
     OPENAI_MODEL: str = "gpt-3.5-turbo"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     
-    # Supabase Configuration
-    SUPABASE_URL: str
-    SUPABASE_KEY: str
-    SUPABASE_SERVICE_KEY: str
+    # Supabase Configuration (Optional - only needed for frontend chat)
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_KEY: Optional[str] = None
+    SUPABASE_SERVICE_KEY: Optional[str] = None
     
     # Database
     DATABASE_URL: str
