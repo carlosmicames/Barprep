@@ -1,6 +1,5 @@
 """
 API endpoints for essay submission and grading.
-SIMPLIFIED VERSION - Works without full RAG service implementation.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,13 +14,8 @@ router = APIRouter(prefix="/essays", tags=["essays"])
 
 
 async def simple_grade_essay(essay_text: str, subject: str, prompt: str) -> dict:
-    """
-    Placeholder grading function.
-    Replace this with actual RAG service call when ready.
-    """
+    """Placeholder grading function."""
     word_count = len(essay_text.split())
-    
-    # Simple scoring based on length (placeholder)
     score = min(100, (word_count / 500) * 100)
     
     return {
@@ -30,11 +24,7 @@ async def simple_grade_essay(essay_text: str, subject: str, prompt: str) -> dict
         "writing_quality_score": round(score * 1.0, 2),
         "citation_accuracy_score": round(score * 0.8, 2),
         "feedback": f"Essay received. Word count: {word_count}. Full AI grading coming soon!",
-        "point_breakdown": {
-            "introduction": "Good",
-            "analysis": "Needs work",
-            "conclusion": "Adequate"
-        },
+        "point_breakdown": {"introduction": "Good", "analysis": "Needs work", "conclusion": "Adequate"},
         "citations": []
     }
 
@@ -45,30 +35,22 @@ async def submit_essay(
     essay_data: schemas.EssaySubmit,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Submit an essay for AI grading.
-    """
-    # Verify user exists
+    """Submit an essay for AI grading."""
     result = await db.execute(select(User).filter(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     
     try:
-        # Grade the essay
         grade_data = await simple_grade_essay(
             essay_text=essay_data.content,
             subject=essay_data.subject.value,
             prompt=essay_data.prompt
         )
         
-        # Create essay submission record with grading data
         essay_submission = EssaySubmission(
             user_id=user_id,
-            prompt_id=None,  # Using custom prompt
+            prompt_id=None,
             essay_text=essay_data.content,
             score=grade_data.get("overall_score"),
             feedback={
@@ -86,7 +68,6 @@ async def submit_essay(
         db.add(essay_submission)
         await db.flush()
         
-        # Update user progress
         result = await db.execute(
             select(UserProgress).filter(
                 UserProgress.user_id == user_id,
@@ -97,7 +78,6 @@ async def submit_essay(
         
         if progress:
             progress.total_essays += 1
-            # Calculate new average
             if progress.avg_essay_score:
                 total_score = progress.avg_essay_score * (progress.total_essays - 1)
                 progress.avg_essay_score = (total_score + grade_data["overall_score"]) / progress.total_essays
@@ -119,7 +99,6 @@ async def submit_essay(
         await db.commit()
         await db.refresh(essay_submission)
         
-        # Format response
         return schemas.Essay(
             id=essay_submission.id,
             user_id=essay_submission.user_id,
@@ -137,7 +116,6 @@ async def submit_essay(
                 citations=essay_submission.feedback.get("citations", [])
             )
         )
-    
     except Exception as e:
         await db.rollback()
         raise HTTPException(
@@ -147,14 +125,8 @@ async def submit_essay(
 
 
 @router.get("/user/{user_id}", response_model=List[schemas.Essay])
-async def get_user_essays(
-    user_id: int,
-    subject: str = None,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get all essays submitted by a user.
-    """
+async def get_user_essays(user_id: int, subject: str = None, db: AsyncSession = Depends(get_db)):
+    """Get all essays submitted by a user."""
     query = select(EssaySubmission).filter(EssaySubmission.user_id == user_id)
     result = await db.execute(query.order_by(EssaySubmission.submitted_at.desc()))
     essays = result.scalars().all()
@@ -164,8 +136,8 @@ async def get_user_essays(
         response.append(schemas.Essay(
             id=essay.id,
             user_id=essay.user_id,
-            subject=subject or "unknown",  
-            prompt="",  
+            subject=subject or "unknown",
+            prompt="",
             content=essay.essay_text,
             submitted_at=essay.submitted_at,
             grade=schemas.EssayGradeResponse(
@@ -178,28 +150,17 @@ async def get_user_essays(
                 citations=essay.feedback.get("citations", []) if essay.feedback else []
             ) if essay.feedback else None
         ))
-    
     return response
 
 
 @router.get("/{essay_id}", response_model=schemas.Essay)
-async def get_essay(
-    essay_id: int,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Get a specific essay with its grade.
-    """
-    result = await db.execute(
-        select(EssaySubmission).filter(EssaySubmission.id == essay_id)
-    )
+async def get_essay(essay_id: int, db: AsyncSession = Depends(get_db)):
+    """Get a specific essay with its grade."""
+    result = await db.execute(select(EssaySubmission).filter(EssaySubmission.id == essay_id))
     essay = result.scalar_one_or_none()
     
     if not essay:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Essay not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Essay not found")
     
     return schemas.Essay(
         id=essay.id,
