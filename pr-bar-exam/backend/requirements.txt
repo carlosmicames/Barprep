@@ -1,43 +1,15 @@
-# FastAPI & Server
-fastapi==0.115.0
-uvicorn[standard]==0.32.0
-python-multipart==0.0.12
-
-# Pydantic
-pydantic==2.9.2
-pydantic-settings==2.6.0
-
-# Supabase
-supabase==2.10.0
-postgrest>=0.17.0
-
-# OpenAI for RAG & MCQ generation
-openai==1.55.0
-tiktoken==0.8.0
-
-# PDF Processing
-pdfplumber==0.11.4
+fastapi==0.109.0
+mangum==0.17.0
+python-dotenv==1.0.0
+pydantic==2.5.3
+pydantic-settings==2.1.0
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+supabase==2.3.0
+openai==1.10.0
+tiktoken==0.5.2
+pgvector==0.2.4
 PyPDF2==3.0.1
-
-# Vector embeddings
-pgvector==0.3.5
-
-# Database
-sqlalchemy==2.0.36
-asyncpg==0.30.0
-psycopg2-binary==2.9.10
-
-# Utilities
-python-dotenv==1.0.1
-python-jose[cryptography]==3.3.0
-httpx>=0.27.0
-tenacity==9.0.0
-python-dateutil==2.9.0
-
-# For table extraction from PDFs
-tabula-py==2.9.3
-pandas==2.2.3
-
-# Testing (optional, for development)
-pytest==8.3.3
-pytest-asyncio==0.24.0
+pdfplumber==0.10.3
+python-multipart==0.0.6
+httpx==0.26.0
