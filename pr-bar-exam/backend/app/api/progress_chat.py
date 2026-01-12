@@ -1,16 +1,16 @@
 """
-API endpoints for progress tracking and chat.
+API endpoints for progress tracking.
+Chat functionality is handled by Supabase real-time, not database models.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.schemas import schemas
-from app.models.models import UserProgress, User, ChatRoom, ChatMessage, SubjectEnum
+from app.models.models import UserProgress, User, SubjectEnum
 from datetime import datetime
 
 progress_router = APIRouter(prefix="/progress", tags=["progress"])
-chat_router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 # ==================== PROGRESS ENDPOINTS ====================
@@ -41,20 +41,20 @@ async def get_user_progress(
     total_correct = 0
     
     for progress in progress_records:
-        accuracy = (progress.total_mcqs_correct / progress.total_mcqs_attempted * 100) if progress.total_mcqs_attempted > 0 else 0.0
+        accuracy = (progress.correct_answers / progress.total_questions_attempted * 100) if progress.total_questions_attempted > 0 else 0.0
         
         subjects_progress.append(schemas.SubjectProgress(
             subject=progress.subject,
-            total_mcqs_attempted=progress.total_mcqs_attempted,
-            total_mcqs_correct=progress.total_mcqs_correct,
+            total_mcqs_attempted=progress.total_questions_attempted,
+            total_mcqs_correct=progress.correct_answers,
             accuracy_percentage=round(accuracy, 2),
-            total_essays_submitted=progress.total_essays_submitted,
-            average_essay_score=progress.average_essay_score,
-            last_activity=progress.last_activity
+            total_essays_submitted=progress.total_essays,
+            average_essay_score=progress.avg_essay_score,
+            last_activity=progress.last_activity or datetime.now()
         ))
         
-        total_attempted += progress.total_mcqs_attempted
-        total_correct += progress.total_mcqs_correct
+        total_attempted += progress.total_questions_attempted
+        total_correct += progress.correct_answers
     
     overall_accuracy = (total_correct / total_attempted * 100) if total_attempted > 0 else 0.0
     
@@ -75,6 +75,14 @@ async def get_subject_progress(
     """
     Get detailed progress for a specific subject.
     """
+    # Verify user exists
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
     progress = db.query(UserProgress).filter(
         UserProgress.user_id == user_id,
         UserProgress.subject == subject
@@ -92,119 +100,14 @@ async def get_subject_progress(
             last_activity=datetime.now()
         )
     
-    accuracy = (progress.total_mcqs_correct / progress.total_mcqs_attempted * 100) if progress.total_mcqs_attempted > 0 else 0.0
+    accuracy = (progress.correct_answers / progress.total_questions_attempted * 100) if progress.total_questions_attempted > 0 else 0.0
     
     return schemas.SubjectProgress(
         subject=progress.subject,
-        total_mcqs_attempted=progress.total_mcqs_attempted,
-        total_mcqs_correct=progress.total_mcqs_correct,
+        total_mcqs_attempted=progress.total_questions_attempted,
+        total_mcqs_correct=progress.correct_answers,
         accuracy_percentage=round(accuracy, 2),
-        total_essays_submitted=progress.total_essays_submitted,
-        average_essay_score=progress.average_essay_score,
-        last_activity=progress.last_activity
+        total_essays_submitted=progress.total_essays,
+        average_essay_score=progress.avg_essay_score,
+        last_activity=progress.last_activity or datetime.now()
     )
-
-
-# ==================== CHAT ENDPOINTS ====================
-
-@chat_router.get("/rooms", response_model=List[schemas.ChatRoom])
-async def get_chat_rooms(db: Session = Depends(get_db)):
-    """
-    Get all chat rooms (one per subject).
-    """
-    rooms = db.query(ChatRoom).all()
-    
-    # If rooms don't exist, create them
-    if not rooms:
-        for subject in SubjectEnum:
-            room = ChatRoom(
-                subject=subject,
-                name=f"{subject.value.title()} Discussion",
-                description=f"Discuss {subject.value} topics with other students"
-            )
-            db.add(room)
-        db.commit()
-        rooms = db.query(ChatRoom).all()
-    
-    return rooms
-
-
-@chat_router.get("/room/{room_id}/messages", response_model=List[schemas.ChatMessage])
-async def get_room_messages(
-    room_id: int,
-    limit: int = 50,
-    db: Session = Depends(get_db)
-):
-    """
-    Get recent messages from a chat room.
-    """
-    messages = db.query(ChatMessage).filter(
-        ChatMessage.room_id == room_id
-    ).order_by(ChatMessage.created_at.desc()).limit(limit).all()
-    
-    # Reverse to get chronological order
-    messages.reverse()
-    
-    return messages
-
-
-@chat_router.post("/message/{user_id}", response_model=schemas.ChatMessage)
-async def send_message(
-    user_id: int,
-    message_data: schemas.ChatMessageCreate,
-    db: Session = Depends(get_db)
-):
-    """
-    Send a message to a chat room.
-    """
-    # Verify user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
-    # Verify room exists
-    room = db.query(ChatRoom).filter(ChatRoom.id == message_data.room_id).first()
-    if not room:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat room not found"
-        )
-    
-    # Create message
-    message = ChatMessage(
-        room_id=message_data.room_id,
-        user_id=user_id,
-        message=message_data.message
-    )
-    db.add(message)
-    db.commit()
-    db.refresh(message)
-    
-    return message
-
-
-@chat_router.get("/room/subject/{subject}", response_model=schemas.ChatRoom)
-async def get_room_by_subject(
-    subject: SubjectEnum,
-    db: Session = Depends(get_db)
-):
-    """
-    Get chat room for a specific subject.
-    """
-    room = db.query(ChatRoom).filter(ChatRoom.subject == subject).first()
-    
-    if not room:
-        # Create room if it doesn't exist
-        room = ChatRoom(
-            subject=subject,
-            name=f"{subject.value.title()} Discussion",
-            description=f"Discuss {subject.value} topics with other students"
-        )
-        db.add(room)
-        db.commit()
-        db.refresh(room)
-    
-    return room

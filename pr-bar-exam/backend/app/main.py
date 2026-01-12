@@ -1,6 +1,6 @@
 """
 Main FastAPI application for PR Bar Exam API.
-Hosted on Railway.
+Hosted on Railway or Vercel.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.core.config import settings
-from app.api import public, quiz, progress, essays, admin
+from app.api import public, quiz, progress, essays, admin, chat
 
 # Configure logging
 logging.basicConfig(
@@ -39,6 +39,7 @@ app = FastAPI(
     - 📖 Essay grading with RAG-based feedback
     - 📊 Progress tracking and weekly analytics
     - 📚 PDF ingestion for study materials
+    - 💬 Real-time chat via Supabase
     
     ## Authentication
     - **Public endpoints**: No auth required (`/ping`, `/health`, `/subjects`)
@@ -67,6 +68,7 @@ app.include_router(public.router)
 app.include_router(quiz.router, prefix="/api")
 app.include_router(progress.router, prefix="/api")
 app.include_router(essays.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 # Admin routes (API key + admin UUID required)
 app.include_router(admin.router)
